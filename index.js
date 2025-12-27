@@ -2834,15 +2834,14 @@ bot.onText(/\/update/, async (msg) => {
     try {
         const { data } = await axios.get(repoRaw);
 
-        if (!data) return bot.sendMessage(chatId, "❌ Update gagal: File kosong!");
+        if (!data) return bot.sendMessage(chatId, "❌ Sudah Versi Terbaru!");
 
         fs.writeFileSync("./index.js", data);
 
         bot.sendMessage(chatId, "<pre>UPDATE BERHASIL!    \nDISARANKAN RESTART DI PANEL AGAR VERSI BARU AKTIF SEPENUHNYA.</pre>");
-
-        process.exit(); // restart jika pakai PM2
+        
     } catch (e) {
         console.log(e);
-        bot.sendMessage(chatId, "❌ Update gagal. Pastikan repo dan file index.js tersedia.");
+        bot.sendMessage(chatId, "❌ Sudah Versi Terbaru!");
     }
 });
