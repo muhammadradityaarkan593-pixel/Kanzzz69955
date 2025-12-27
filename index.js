@@ -2829,7 +2829,7 @@ bot.onText(/\/update/, async (msg) => {
 
     const repoRaw = "https://raw.githubusercontent.com/muhammadradityaarkan593-pixel/Kanzzz69955/main/index.js";
 
-    bot.sendMessage(chatId, "⏳ Sedang mengecek update...");
+    bot.sendMessage(chatId, "⏳ Sedang mengecek update... cek versi untuk mengetahui apakah update atau belum");
 
     try {
         const { data } = await axios.get(repoRaw);
@@ -2840,7 +2840,7 @@ bot.onText(/\/update/, async (msg) => {
 
         bot.sendMessage(chatId, "✅ Update berhasil!\nSilakan restart bot.");
 
-        process.exit(); // restart jika pakai PM2
+         // restart jika pakai PM2
     } catch (e) {
         console.log(e);
         bot.sendMessage(chatId, "❌ Update gagal. Pastikan repo dan file index.js tersedia.");
