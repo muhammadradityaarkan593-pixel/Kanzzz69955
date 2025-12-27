@@ -2829,7 +2829,7 @@ bot.onText(/\/update/, async (msg) => {
 
     const repoRaw = "https://raw.githubusercontent.com/muhammadradityaarkan593-pixel/Kanzzz69955/main/index.js";
 
-    bot.sendMessage(chatId, "⏳ Sedang mengecek update...              \nJika Update Berhasil, System Akan Melakukan Restart Otomatis...");
+    bot.sendMessage(chatId, "⏳ Sedang mengecek update...              \nJika Update Berhasil, Versi Baru Akan Muncul Di Menu.");
 
     try {
         const { data } = await axios.get(repoRaw);
