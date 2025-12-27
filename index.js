@@ -2838,9 +2838,7 @@ bot.onText(/\/update/, async (msg) => {
 
         fs.writeFileSync("./index.js", data);
 
-        bot.sendMessage(chatId, "✅ Update berhasil!\nSilakan restart bot.");
-
-process.exit();
+        bot.sendMessage(chatId, "<pre>UPDATE BERHASIL!    \nDISARANKAN RESTART DI PANEL AGAR VERSI BARU AKTIF SEPENUHNYA.</pre>");
 
         process.exit(); // restart jika pakai PM2
     } catch (e) {
