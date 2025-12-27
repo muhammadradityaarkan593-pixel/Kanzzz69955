@@ -2838,7 +2838,7 @@ bot.onText(/\/update/, async (msg) => {
 
         fs.writeFileSync("./index.js", data);
 
-        bot.sendMessage(chatId, "<pre>UPDATE BERHASIL!    \nDISARANKAN RESTART DI PANEL AGAR VERSI BARU AKTIF SEPENUHNYA.</pre>");
+        bot.sendMessage(chatId, "✅ UPDATE BERHASIL!    \nDISARANKAN RESTART DI PANEL AGAR VERSI BARU AKTIF SEPENUHNYA.");
         
     } catch (e) {
         console.log(e);
