@@ -1,3 +1,5 @@
+const axios = require("axios");
+const fs = require("fs");
 const {
     default: makeWASocket,
     useMultiFileAuthState,
@@ -71,7 +73,6 @@ const {
     InteractiveMessage,
     Header,
 } = require('@whiskeysockets/baileys');
-const fs = require("fs-extra");
 const JsConfuser = require("js-confuser");
 const P = require("pino");
 const crypto = require("crypto");
@@ -121,7 +122,6 @@ watchFile('./ПОРНО/prem.json', (data) => (premiumUsers = data));
 watchFile('./ПОРНО/admin.json', (data) => (adminUsers = data));
 
 
-const axios = require("axios");
 const chalk = require("chalk"); // Import chalk untuk warna
 const config = require("./ПОРНО/config.js");
 const TelegramBot = require("node-telegram-bot-api");
