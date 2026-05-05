@@ -26,6 +26,12 @@ jobs:
             -H "Accept: application/octet-stream" \
             "${{ github.event.inputs.zip_url }}" \
             -o project.zip
+          echo "=== File size ==="
+          ls -lh project.zip
+          echo "=== File type ==="
+          file project.zip
+          echo "=== First 200 bytes ==="
+          xxd project.zip | head -15
 
       - name: Extract ZIP
         run: |
