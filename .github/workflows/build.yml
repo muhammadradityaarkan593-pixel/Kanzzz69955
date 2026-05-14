@@ -1,5 +1,4 @@
 # .github/workflows/build.yml
-# Taruh file ini di repo Actions kamu (GITHUB_REPO di config)
 
 name: Build Flutter APK
 
@@ -7,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       zip_url:
-        description: "URL download ZIP project Flutter"
+        description: "URL download ZIP project Flutter (GitHub API asset URL)"
         required: true
       tag:
         description: "Tag build (untuk identifikasi)"
@@ -21,25 +20,38 @@ jobs:
     steps:
       - name: Download ZIP project
         run: |
+          echo "=== Downloading from: ${{ github.event.inputs.zip_url }} ==="
           curl -L \
             -H "Authorization: Bearer ${{ secrets.GH_TOKEN }}" \
             -H "Accept: application/octet-stream" \
             "${{ github.event.inputs.zip_url }}" \
-            -o project.zip
+            -o project.zip \
+            -w "\n=== HTTP Status: %{http_code} ===\n=== Final URL: %{url_effective} ===\n"
           echo "=== File size ==="
           ls -lh project.zip
           echo "=== File type ==="
           file project.zip
-          echo "=== First 200 bytes ==="
-          xxd project.zip | head -15
+          echo "=== First 16 bytes (hex) ==="
+          xxd project.zip | head -2
 
       - name: Extract ZIP
         run: |
+          # Validasi ZIP sebelum extract
+          if ! unzip -t project.zip > /dev/null 2>&1; then
+            echo "❌ File bukan ZIP valid! Isi file:"
+            cat project.zip
+            exit 1
+          fi
           unzip -q project.zip -d project_raw
           # Cari folder yang berisi pubspec.yaml
           PROJECT_DIR=$(find project_raw -name "pubspec.yaml" -maxdepth 3 | head -n 1 | xargs dirname)
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "❌ pubspec.yaml tidak ditemukan di dalam ZIP!"
+            find project_raw -type f | head -20
+            exit 1
+          fi
           echo "PROJECT_DIR=$PROJECT_DIR" >> $GITHUB_ENV
-          echo "Ditemukan project di: $PROJECT_DIR"
+          echo "✅ Ditemukan project di: $PROJECT_DIR"
 
       - name: Setup Java
         uses: actions/setup-java@v4
