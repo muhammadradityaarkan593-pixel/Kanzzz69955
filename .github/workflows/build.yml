@@ -13,12 +13,18 @@ on:
         description: "Tag build"
         required: true
 
+      build_type:
+        description: "debug / release"
+        required: true
+        default: "release"
+
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
+
       # =========================
       # DOWNLOAD ZIP
       # =========================
@@ -130,11 +136,13 @@ jobs:
       # =========================
       # BUILD APK
       # =========================
-      - name: Build APK Release
+      - name: Build APK
         working-directory: ${{ env.PROJECT_DIR }}
         run: |
           echo "=== Building APK ==="
-          flutter build apk --release
+          echo "Mode: ${{ github.event.inputs.build_type }}"
+
+          flutter build apk --${{ github.event.inputs.build_type }}
 
       # =========================
       # CHECK APK
@@ -146,12 +154,19 @@ jobs:
 
           find build -name "*.apk"
 
-          if [ ! -f build/app/outputs/flutter-apk/app-release.apk ]; then
+          APK_PATH="build/app/outputs/flutter-apk/app-${{ github.event.inputs.build_type }}.apk"
+
+          if [ ! -f "$APK_PATH" ]; then
             echo "❌ APK tidak ditemukan!"
             exit 1
           fi
 
           echo "✅ APK berhasil dibuat"
+          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
+
+          echo ""
+          echo "=== APK Size ==="
+          ls -lh "$APK_PATH"
 
       # =========================
       # UPLOAD APK
@@ -159,7 +174,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: flutter-apk-${{ github.event.inputs.tag }}
-          path: ${{ env.PROJECT_DIR }}/build/app/outputs/flutter-apk/app-release.apk
+          name: flutter-${{ github.event.inputs.build_type }}-${{ github.event.inputs.tag }}
+          path: ${{ env.PROJECT_DIR }}/${{ env.APK_PATH }}
           retention-days: 1
           if-no-files-found: error
