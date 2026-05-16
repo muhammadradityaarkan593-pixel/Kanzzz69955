@@ -31,7 +31,11 @@ jobs:
           cache: true
 
       - name: Create Flutter Project
-        run: flutter create --org com.webapk myapp
+        run: |
+          APP_NAME="${{ github.event.inputs.app_name }}"
+          # Buat package name dari app name (lowercase, no space)
+          PKG=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | tr -cd '[:alnum:]_')
+          flutter create --org com.webapk --project-name "$PKG" myapp
 
       - name: Add Dependencies
         run: |
@@ -41,7 +45,10 @@ jobs:
 
       - name: Write main.dart
         run: |
-          cat > myapp/lib/main.dart << 'DART'
+          WEB_URL="${{ github.event.inputs.web_url }}"
+          APP_NAME="${{ github.event.inputs.app_name }}"
+          
+          cat > myapp/lib/main.dart << DART
           import 'package:flutter/material.dart';
           import 'package:flutter/services.dart';
           import 'package:webview_flutter/webview_flutter.dart';
@@ -57,7 +64,7 @@ jobs:
             @override
             Widget build(BuildContext context) {
               return MaterialApp(
-                title: 'APP_NAME_PLACEHOLDER',
+                title: '$APP_NAME',
                 debugShowCheckedModeBanner: false,
                 theme: ThemeData(useMaterial3: true),
                 home: const WebViewPage(),
@@ -80,10 +87,20 @@ jobs:
               super.initState();
               _controller = WebViewController()
                 ..setJavaScriptMode(JavaScriptMode.unrestricted)
+                ..setBackgroundColor(const Color(0x00000000))
                 ..setNavigationDelegate(NavigationDelegate(
+                  onPageStarted: (_) => setState(() => _isLoading = true),
                   onPageFinished: (_) => setState(() => _isLoading = false),
+                  onWebResourceError: (error) => debugPrint('Error: \${error.description}'),
+                  onNavigationRequest: (request) => NavigationDecision.navigate,
                 ))
-                ..loadRequest(Uri.parse('WEB_URL_PLACEHOLDER'));
+                ..loadRequest(
+                  Uri.parse('$WEB_URL'),
+                  headers: {
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache',
+                  },
+                );
             }
 
             @override
@@ -129,11 +146,17 @@ jobs:
 
           file myapp/assets/icon/icon.png
 
-      - name: Setup pubspec assets
+      - - name: Setup pubspec assets
         run: |
+          APP_NAME="${{ github.event.inputs.app_name }}"
           cd myapp
-          # Tambah assets section ke pubspec.yaml
-          sed -i '/^flutter:/a\  assets:\n    - assets/icon/icon.png' pubspec.yaml
+
+          # Ganti nama app di pubspec.yaml
+          sed -i "s/^name:.*/name: $(echo $APP_NAME | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | tr -cd '[:alnum:]_')/" pubspec.yaml
+          sed -i "s/^description:.*/description: $APP_NAME/" pubspec.yaml
+
+          # Tambah assets
+          sed -i '/^flutter:/a\  assets:\n    - assets\/icon\/icon.png' pubspec.yaml
 
       - name: Write launcher icons config
         run: |
