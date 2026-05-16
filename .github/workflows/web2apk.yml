@@ -10,7 +10,7 @@ on:
         description: 'Nama Aplikasi'
         required: true
       icon_url:
-        description: 'URL Icon APK'
+        description: 'Icon Base64'
         required: true
 
 jobs:
@@ -107,29 +107,27 @@ jobs:
           sed -i "s|APP_NAME_PLACEHOLDER|${{ github.event.inputs.app_name }}|g" myapp/lib/main.dart
           sed -i "s|WEB_URL_PLACEHOLDER|${{ github.event.inputs.web_url }}|g" myapp/lib/main.dart
 
-      - name: Download and Convert Icon
+      - name: Setup Icon from Base64
         run: |
-          sudo apt-get install -y imagemagick
           mkdir -p myapp/assets/icon
-          
-          # Download icon
-          curl -L "${{ github.event.inputs.icon_url }}" -o myapp/assets/icon/icon_raw
-          
-          # Cek file berhasil didownload
+          sudo apt-get install -y imagemagick
+
+          # Decode base64 ke file
+          echo "${{ github.event.inputs.icon_base64 }}" | base64 -d > myapp/assets/icon/icon_raw
+
+          # Cek file
           ls -lh myapp/assets/icon/icon_raw
           file myapp/assets/icon/icon_raw
-          
-          # Convert ke PNG kotak sempurna tanpa gepeng
+
+          # Convert ke PNG kotak sempurna
           convert myapp/assets/icon/icon_raw \
             -background transparent \
             -gravity center \
             -resize 1024x1024 \
             -extent 1024x1024 \
             myapp/assets/icon/icon.png
-          
-          # Verifikasi hasil
+
           file myapp/assets/icon/icon.png
-          ls -lh myapp/assets/icon/icon.png
 
       - name: Setup pubspec assets
         run: |
