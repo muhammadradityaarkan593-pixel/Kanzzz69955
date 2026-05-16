@@ -112,6 +112,18 @@ jobs:
           mkdir -p myapp/assets/icon
           curl -L "${{ github.event.inputs.icon_url }}" -o myapp/assets/icon/icon.png
 
+      - name: Convert Icon to PNG
+        run: |
+          sudo apt-get install -y imagemagick
+          # Convert ke PNG dengan padding jadi kotak sempurna (tidak gepeng)
+          convert myapp/assets/icon/icon_raw \
+            -background transparent \
+            -gravity center \
+            -resize 1024x1024 \
+            -extent 1024x1024 \
+            myapp/assets/icon/icon.png
+          file myapp/assets/icon/icon.png
+
       - name: Setup pubspec assets
         run: |
           cd myapp
