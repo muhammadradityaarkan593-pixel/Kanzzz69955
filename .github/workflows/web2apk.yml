@@ -33,7 +33,6 @@ jobs:
       - name: Create Flutter Project
         run: |
           APP_NAME="${{ github.event.inputs.app_name }}"
-          # Buat package name dari app name (lowercase, no space)
           PKG=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | tr -cd '[:alnum:]_')
           flutter create --org com.webapk --project-name "$PKG" myapp
 
@@ -47,7 +46,7 @@ jobs:
         run: |
           WEB_URL="${{ github.event.inputs.web_url }}"
           APP_NAME="${{ github.event.inputs.app_name }}"
-          
+
           cat > myapp/lib/main.dart << DART
           import 'package:flutter/material.dart';
           import 'package:flutter/services.dart';
@@ -87,32 +86,42 @@ jobs:
               super.initState();
               _controller = WebViewController()
                 ..setJavaScriptMode(JavaScriptMode.unrestricted)
-                ..setBackgroundColor(const Color(0x00000000))
                 ..setNavigationDelegate(NavigationDelegate(
                   onPageStarted: (_) => setState(() => _isLoading = true),
                   onPageFinished: (_) => setState(() => _isLoading = false),
-                  onWebResourceError: (error) => debugPrint('Error: \${error.description}'),
-                  onNavigationRequest: (request) => NavigationDecision.navigate,
-                ))
-                ..loadRequest(
-                  Uri.parse('$WEB_URL'),
-                  headers: {
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache',
+                  onWebResourceError: (WebResourceError error) {
+                    if (error.errorCode == -6) {
+                      _controller.reload();
+                    }
                   },
-                );
+                  onNavigationRequest: (NavigationRequest request) {
+                    return NavigationDecision.navigate;
+                  },
+                ))
+                ..loadRequest(Uri.parse('$WEB_URL'));
+            }
+
+            Future<bool> _onWillPop() async {
+              if (await _controller.canGoBack()) {
+                await _controller.goBack();
+                return false;
+              }
+              return true;
             }
 
             @override
             Widget build(BuildContext context) {
-              return Scaffold(
-                body: SafeArea(
-                  child: Stack(
-                    children: [
-                      WebViewWidget(controller: _controller),
-                      if (_isLoading)
-                        const Center(child: CircularProgressIndicator()),
-                    ],
+              return WillPopScope(
+                onWillPop: _onWillPop,
+                child: Scaffold(
+                  body: SafeArea(
+                    child: Stack(
+                      children: [
+                        WebViewWidget(controller: _controller),
+                        if (_isLoading)
+                          const Center(child: CircularProgressIndicator()),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -120,23 +129,16 @@ jobs:
           }
           DART
 
-          # Ganti placeholder dengan nilai asli
-          sed -i "s|APP_NAME_PLACEHOLDER|${{ github.event.inputs.app_name }}|g" myapp/lib/main.dart
-          sed -i "s|WEB_URL_PLACEHOLDER|${{ github.event.inputs.web_url }}|g" myapp/lib/main.dart
-
       - name: Setup Icon from Base64
         run: |
           mkdir -p myapp/assets/icon
           sudo apt-get install -y imagemagick
 
-          # Decode base64 ke file
           echo "${{ github.event.inputs.icon_base64 }}" | base64 -d > myapp/assets/icon/icon_raw
 
-          # Cek file
           ls -lh myapp/assets/icon/icon_raw
           file myapp/assets/icon/icon_raw
 
-          # Convert ke PNG kotak sempurna
           convert myapp/assets/icon/icon_raw \
             -background transparent \
             -gravity center \
@@ -151,11 +153,8 @@ jobs:
           APP_NAME="${{ github.event.inputs.app_name }}"
           cd myapp
 
-          # Ganti nama app di pubspec.yaml
           sed -i "s/^name:.*/name: $(echo $APP_NAME | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | tr -cd '[:alnum:]_')/" pubspec.yaml
           sed -i "s/^description:.*/description: $APP_NAME/" pubspec.yaml
-
-          # Tambah assets
           sed -i '/^flutter:/a\  assets:\n    - assets\/icon\/icon.png' pubspec.yaml
 
       - name: Write launcher icons config
@@ -173,9 +172,8 @@ jobs:
           cd myapp
           dart run flutter_launcher_icons -f flutter_launcher_icons.yaml
 
-      - name: Allow HTTP (Android)
+      - name: Allow HTTP Android
         run: |
-          # Tambah network security config untuk allow HTTP
           mkdir -p myapp/android/app/src/main/res/xml
           cat > myapp/android/app/src/main/res/xml/network_security_config.xml << 'EOF'
           <?xml version="1.0" encoding="utf-8"?>
@@ -188,7 +186,6 @@ jobs:
           </network-security-config>
           EOF
 
-          # Tambah network security config ke AndroidManifest.xml
           sed -i 's/<application/<application android:networkSecurityConfig="@xml\/network_security_config"/' \
             myapp/android/app/src/main/AndroidManifest.xml
 
