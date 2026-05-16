@@ -9,8 +9,8 @@ on:
       app_name:
         description: 'Nama Aplikasi'
         required: true
-      icon_base64:
-        description: 'Icon Base64'
+      icon_url:
+        description: 'Icon Url'
         required: true
 
 jobs:
@@ -129,12 +129,15 @@ jobs:
           }
           DART
 
-      - name: Setup Icon from Base64
+      - name: Download and Convert Icon
         run: |
           mkdir -p myapp/assets/icon
           sudo apt-get install -y imagemagick
 
-          echo "${{ github.event.inputs.icon_base64 }}" | base64 -d > myapp/assets/icon/icon_raw
+          curl -L "${{ github.event.inputs.icon_url }}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/octet-stream" \
+            -o myapp/assets/icon/icon_raw
 
           ls -lh myapp/assets/icon/icon_raw
           file myapp/assets/icon/icon_raw
