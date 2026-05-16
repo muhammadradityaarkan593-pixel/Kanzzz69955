@@ -1,4 +1,4 @@
-name: Web2APK Fix
+name: Web2APK Fix Total
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
         description: 'Nama Aplikasi (Contoh: My Web App)'
         required: true
       icon_url:
-        description: 'Icon Url (Wajib Direct Link Gambar .png/.jpg)'
+        description: 'Icon Url (Link Gambar / Direct Link)'
         required: true
 
 jobs:
@@ -33,7 +33,6 @@ jobs:
       - name: Create Flutter Project
         run: |
           APP_NAME="${{ github.event.inputs.app_name }}"
-          # PKG hanya untuk nama folder internal flutter (tidak boleh ada spasi)
           PKG=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | tr -cd '[:alnum:]_')
           flutter create --org com.webapk --project-name "$PKG" myapp
 
@@ -133,11 +132,8 @@ jobs:
           APP_NAME="${{ github.event.inputs.app_name }}"
           MANIFEST="myapp/android/app/src/main/AndroidManifest.xml"
           
-          # 1. Menambah Izin Internet (Mengatasi ERR_CACHE_MISS)
           sed -i '/<manifest xmlns:android/a\    <uses-permission android:name="android.permission.INTERNET"\/>' $MANIFEST
           sed -i '/<manifest xmlns:android/a\    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/>' $MANIFEST
-          
-          # 2. Memperbaiki Nama Aplikasi (Agar tetap kapital & ada spasi di HP)
           sed -i "s/android:label=\"[^\"]*\"/android:label=\"$APP_NAME\"/" $MANIFEST
 
       - name: Setup Network Security (Allow HTTP)
@@ -154,20 +150,30 @@ jobs:
           </network-security-config>
           EOF
           
-          # Hubungkan konfigurasi keamanan jaringan ke AndroidManifest
           sed -i 's/<application/<application android:networkSecurityConfig="@xml\/network_security_config"/' \
             myapp/android/app/src/main/AndroidManifest.xml
 
-      - name: Download App Icon
+      - name: Download, Validate and Sanitize Icon
         run: |
           mkdir -p myapp/assets/icon
-          
-          # Mengunduh langsung ke format .png tanpa ImageMagick
-          curl -L "${{ github.event.inputs.icon_url }}" -o myapp/assets/icon/icon.png
-          
-          # Cek log ukuran file dan jenis konten (opsional untuk debugging jika gagal lagi)
-          ls -lh myapp/assets/icon/icon.png
-          file myapp/assets/icon/icon.png
+          sudo apt-get update && sudo apt-get install -y imagemagick
+
+          # Download mentah ke file temporer
+          curl -L "${{ github.event.inputs.icon_url }}" -o myapp/assets/icon/downloaded_raw
+
+          # Tampilkan informasi file ke log untuk keperluan debugging
+          file myapp/assets/icon/downloaded_raw
+
+          # Ganti penanganan: Konversi paksa input dari format apa pun ke PNG standar
+          # Menggunakan sintaks 'convert <file_input> <file_output>' untuk menangani format fleksibel
+          if ! convert myapp/assets/icon/downloaded_raw -resize 512x512 myapp/assets/icon/icon.png; then
+            echo "========================================= [ERROR] ========================================="
+            echo "Format file yang diunduh tidak dikenali sebagai gambar oleh ImageMagick."
+            echo "Kemungkinan besar URL yang Anda masukkan bukan merupakan direct link gambar asli."
+            echo "Silakan periksa kembali tautan ikon Anda."
+            echo "==========================================================================================="
+            exit 1
+          fi
 
       - name: Write launcher icons config
         run: |
