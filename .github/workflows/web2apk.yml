@@ -1,0 +1,138 @@
+name: Web2APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      web_url:
+        description: 'URL Website'
+        required: true
+      app_name:
+        description: 'Nama Aplikasi'
+        required: true
+      icon_url:
+        description: 'URL Icon APK'
+        required: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.9'
+          channel: stable
+          cache: true
+
+      - name: Create Flutter Project
+        run: |
+          flutter create --org com.webapk myapp
+          cd myapp
+          flutter pub add webview_flutter
+          flutter pub add flutter_launcher_icons
+
+      - name: Write main.dart
+        run: |
+          cat > myapp/lib/main.dart << 'DART'
+          import 'package:flutter/material.dart';
+          import 'package:flutter/services.dart';
+          import 'package:webview_flutter/webview_flutter.dart';
+
+          void main() {
+            WidgetsFlutterBinding.ensureInitialized();
+            SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+            runApp(const MyApp());
+          }
+
+          class MyApp extends StatelessWidget {
+            const MyApp({super.key});
+            @override
+            Widget build(BuildContext context) {
+              return MaterialApp(
+                title: '${{ github.event.inputs.app_name }}',
+                debugShowCheckedModeBanner: false,
+                theme: ThemeData(useMaterial3: true),
+                home: const WebViewPage(),
+              );
+            }
+          }
+
+          class WebViewPage extends StatefulWidget {
+            const WebViewPage({super.key});
+            @override
+            State<WebViewPage> createState() => _WebViewPageState();
+          }
+
+          class _WebViewPageState extends State<WebViewPage> {
+            late final WebViewController _controller;
+            bool _isLoading = true;
+
+            @override
+            void initState() {
+              super.initState();
+              _controller = WebViewController()
+                ..setJavaScriptMode(JavaScriptMode.unrestricted)
+                ..setNavigationDelegate(NavigationDelegate(
+                  onPageFinished: (_) => setState(() => _isLoading = false),
+                ))
+                ..loadRequest(Uri.parse('${{ github.event.inputs.web_url }}'));
+            }
+
+            @override
+            Widget build(BuildContext context) {
+              return Scaffold(
+                body: SafeArea(
+                  child: Stack(
+                    children: [
+                      WebViewWidget(controller: _controller),
+                      if (_isLoading)
+                        const Center(child: CircularProgressIndicator()),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+          DART
+
+      - name: Download Icon
+        run: |
+          mkdir -p myapp/assets/icon
+          curl -L "${{ github.event.inputs.icon_url }}" -o myapp/assets/icon/icon.png
+
+      - name: Setup Launcher Icons Config
+        run: |
+          cat >> myapp/pubspec.yaml << 'EOF'
+
+          flutter_launcher_icons:
+            android: true
+            ios: false
+            image_path: "assets/icon/icon.png"
+            min_sdk_android: 21
+
+          flutter:
+            assets:
+              - assets/icon/icon.png
+          EOF
+
+      - name: Generate Icons
+        run: |
+          cd myapp
+          dart run flutter_launcher_icons
+
+      - name: Build APK
+        run: |
+          cd myapp
+          flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: web2apk-release
+          path: myapp/build/app/outputs/flutter-apk/app-release.apk
