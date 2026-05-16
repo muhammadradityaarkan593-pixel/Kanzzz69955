@@ -10,7 +10,7 @@ on:
         description: 'Nama Aplikasi (Contoh: My Web App)'
         required: true
       icon_url:
-        description: 'Icon Url (Link Gambar Direct)'
+        description: 'Icon Url (Wajib Direct Link Gambar .png/.jpg)'
         required: true
 
 jobs:
@@ -26,14 +26,14 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.41.9' # Menggunakan versi stabil yang umum
+          flutter-version: '3.19.0'
           channel: stable
           cache: true
 
       - name: Create Flutter Project
         run: |
           APP_NAME="${{ github.event.inputs.app_name }}"
-          # PKG hanya untuk nama internal project (tidak boleh ada spasi)
+          # PKG hanya untuk nama folder internal flutter (tidak boleh ada spasi)
           PKG=$(echo "$APP_NAME" | tr '[:upper:]' '[:lower:]' | tr ' ' '_' | tr -cd '[:alnum:]_')
           flutter create --org com.webapk --project-name "$PKG" myapp
 
@@ -133,11 +133,11 @@ jobs:
           APP_NAME="${{ github.event.inputs.app_name }}"
           MANIFEST="myapp/android/app/src/main/AndroidManifest.xml"
           
-          # 1. Menambah Izin Internet (Fix ERR_CACHE_MISS)
+          # 1. Menambah Izin Internet (Mengatasi ERR_CACHE_MISS)
           sed -i '/<manifest xmlns:android/a\    <uses-permission android:name="android.permission.INTERNET"\/>' $MANIFEST
           sed -i '/<manifest xmlns:android/a\    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"\/>' $MANIFEST
           
-          # 2. Memperbaiki Nama Aplikasi (Agar tetap ada spasi/kapital)
+          # 2. Memperbaiki Nama Aplikasi (Agar tetap kapital & ada spasi di HP)
           sed -i "s/android:label=\"[^\"]*\"/android:label=\"$APP_NAME\"/" $MANIFEST
 
       - name: Setup Network Security (Allow HTTP)
@@ -154,16 +154,20 @@ jobs:
           </network-security-config>
           EOF
           
-          # Hubungkan config ke AndroidManifest
+          # Hubungkan konfigurasi keamanan jaringan ke AndroidManifest
           sed -i 's/<application/<application android:networkSecurityConfig="@xml\/network_security_config"/' \
             myapp/android/app/src/main/AndroidManifest.xml
 
-      - name: Download and Convert Icon
+      - name: Download App Icon
         run: |
           mkdir -p myapp/assets/icon
-          sudo apt-get install -y imagemagick
-          curl -L "${{ github.event.inputs.icon_url }}" -o myapp/assets/icon/icon_raw
-          convert myapp/assets/icon/icon_raw -resize 1024x1024 myapp/assets/icon/icon.png
+          
+          # Mengunduh langsung ke format .png tanpa ImageMagick
+          curl -L "${{ github.event.inputs.icon_url }}" -o myapp/assets/icon/icon.png
+          
+          # Cek log ukuran file dan jenis konten (opsional untuk debugging jika gagal lagi)
+          ls -lh myapp/assets/icon/icon.png
+          file myapp/assets/icon/icon.png
 
       - name: Write launcher icons config
         run: |
