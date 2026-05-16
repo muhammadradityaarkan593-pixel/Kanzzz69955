@@ -31,8 +31,10 @@ jobs:
           cache: true
 
       - name: Create Flutter Project
+        run: flutter create --org com.webapk myapp
+
+      - name: Add Dependencies
         run: |
-          flutter create --org com.webapk myapp
           cd myapp
           flutter pub add webview_flutter
           flutter pub add flutter_launcher_icons
@@ -55,7 +57,7 @@ jobs:
             @override
             Widget build(BuildContext context) {
               return MaterialApp(
-                title: '${{ github.event.inputs.app_name }}',
+                title: 'APP_NAME_PLACEHOLDER',
                 debugShowCheckedModeBanner: false,
                 theme: ThemeData(useMaterial3: true),
                 home: const WebViewPage(),
@@ -81,7 +83,7 @@ jobs:
                 ..setNavigationDelegate(NavigationDelegate(
                   onPageFinished: (_) => setState(() => _isLoading = false),
                 ))
-                ..loadRequest(Uri.parse('${{ github.event.inputs.web_url }}'));
+                ..loadRequest(Uri.parse('WEB_URL_PLACEHOLDER'));
             }
 
             @override
@@ -101,30 +103,54 @@ jobs:
           }
           DART
 
+          # Ganti placeholder dengan nilai asli
+          sed -i "s|APP_NAME_PLACEHOLDER|${{ github.event.inputs.app_name }}|g" myapp/lib/main.dart
+          sed -i "s|WEB_URL_PLACEHOLDER|${{ github.event.inputs.web_url }}|g" myapp/lib/main.dart
+
       - name: Download Icon
         run: |
           mkdir -p myapp/assets/icon
           curl -L "${{ github.event.inputs.icon_url }}" -o myapp/assets/icon/icon.png
 
-      - name: Setup Launcher Icons Config
+      - name: Setup pubspec assets
         run: |
-          cat >> myapp/pubspec.yaml << 'EOF'
+          cd myapp
+          # Tambah assets section ke pubspec.yaml
+          sed -i '/^flutter:/a\  assets:\n    - assets/icon/icon.png' pubspec.yaml
 
+      - name: Write launcher icons config
+        run: |
+          cat > myapp/flutter_launcher_icons.yaml << 'EOF'
           flutter_launcher_icons:
             android: true
             ios: false
             image_path: "assets/icon/icon.png"
             min_sdk_android: 21
-
-          flutter:
-            assets:
-              - assets/icon/icon.png
           EOF
 
       - name: Generate Icons
         run: |
           cd myapp
-          dart run flutter_launcher_icons
+          dart run flutter_launcher_icons -f flutter_launcher_icons.yaml
+
+      - name: Allow HTTP (Android)
+        run: |
+          # Tambah network security config untuk allow HTTP
+          mkdir -p myapp/android/app/src/main/res/xml
+          cat > myapp/android/app/src/main/res/xml/network_security_config.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <network-security-config>
+            <base-config cleartextTrafficPermitted="true">
+              <trust-anchors>
+                <certificates src="system"/>
+              </trust-anchors>
+            </base-config>
+          </network-security-config>
+          EOF
+
+          # Tambah network security config ke AndroidManifest.xml
+          sed -i 's/<application/<application android:networkSecurityConfig="@xml\/network_security_config"/' \
+            myapp/android/app/src/main/AndroidManifest.xml
 
       - name: Build APK
         run: |
