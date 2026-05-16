@@ -1,16 +1,16 @@
-name: Web2APK Fix Total
+name: Web2APK
 
 on:
   workflow_dispatch:
     inputs:
       web_url:
-        description: 'URL Website (Contoh: https://google.com)'
+        description: 'URL Website'
         required: true
       app_name:
-        description: 'Nama Aplikasi (Contoh: My Web App)'
+        description: 'Nama Aplikasi'
         required: true
       icon_url:
-        description: 'Icon Url (Link Gambar / Direct Link)'
+        description: 'Icon Url'
         required: true
 
 jobs:
@@ -158,19 +158,17 @@ jobs:
           mkdir -p myapp/assets/icon
           sudo apt-get update && sudo apt-get install -y imagemagick
 
-          # Download mentah ke file temporer
-          curl -L "${{ github.event.inputs.icon_url }}" -o myapp/assets/icon/downloaded_raw
+          # Download dari link API internal GitHub menggunakan GITHUB_TOKEN bawaan runner
+          curl -L -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+               -H "Accept: application/octet-stream" \
+               "${{ github.event.inputs.icon_url }}" \
+               -o myapp/assets/icon/downloaded_raw
 
-          # Tampilkan informasi file ke log untuk keperluan debugging
-          file myapp/assets/icon/downloaded_raw
-
-          # Ganti penanganan: Konversi paksa input dari format apa pun ke PNG standar
-          # Menggunakan sintaks 'convert <file_input> <file_output>' untuk menangani format fleksibel
+          # Validasi paksa, ganti ke PNG jika aman, cegah jika file berisi teks HTML
           if ! convert myapp/assets/icon/downloaded_raw -resize 512x512 myapp/assets/icon/icon.png; then
             echo "========================================= [ERROR] ========================================="
-            echo "Format file yang diunduh tidak dikenali sebagai gambar oleh ImageMagick."
-            echo "Kemungkinan besar URL yang Anda masukkan bukan merupakan direct link gambar asli."
-            echo "Silakan periksa kembali tautan ikon Anda."
+            echo "FILE YANG DI-DOWNLOAD BUKAN BINARY GAMBAR VALID!"
+            echo "Isi file terdeteksi sebagai teks atau halaman HTML konfirmasi GitHub."
             echo "==========================================================================================="
             exit 1
           fi
