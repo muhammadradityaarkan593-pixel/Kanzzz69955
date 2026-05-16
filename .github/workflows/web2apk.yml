@@ -107,22 +107,29 @@ jobs:
           sed -i "s|APP_NAME_PLACEHOLDER|${{ github.event.inputs.app_name }}|g" myapp/lib/main.dart
           sed -i "s|WEB_URL_PLACEHOLDER|${{ github.event.inputs.web_url }}|g" myapp/lib/main.dart
 
-      - name: Download Icon
-        run: |
-          mkdir -p myapp/assets/icon
-          curl -L "${{ github.event.inputs.icon_url }}" -o myapp/assets/icon/icon.png
-
-      - name: Convert Icon to PNG
+      - name: Download and Convert Icon
         run: |
           sudo apt-get install -y imagemagick
-          # Convert ke PNG dengan padding jadi kotak sempurna (tidak gepeng)
+          mkdir -p myapp/assets/icon
+          
+          # Download icon
+          curl -L "${{ github.event.inputs.icon_url }}" -o myapp/assets/icon/icon_raw
+          
+          # Cek file berhasil didownload
+          ls -lh myapp/assets/icon/icon_raw
+          file myapp/assets/icon/icon_raw
+          
+          # Convert ke PNG kotak sempurna tanpa gepeng
           convert myapp/assets/icon/icon_raw \
             -background transparent \
             -gravity center \
             -resize 1024x1024 \
             -extent 1024x1024 \
             myapp/assets/icon/icon.png
+          
+          # Verifikasi hasil
           file myapp/assets/icon/icon.png
+          ls -lh myapp/assets/icon/icon.png
 
       - name: Setup pubspec assets
         run: |
