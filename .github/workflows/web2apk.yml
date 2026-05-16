@@ -146,7 +146,7 @@ jobs:
 
           file myapp/assets/icon/icon.png
 
-      - - name: Setup pubspec assets
+      - name: Setup pubspec assets
         run: |
           APP_NAME="${{ github.event.inputs.app_name }}"
           cd myapp
