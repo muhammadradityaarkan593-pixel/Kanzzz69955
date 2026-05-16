@@ -9,7 +9,7 @@ on:
       app_name:
         description: 'Nama Aplikasi'
         required: true
-      icon_url:
+      icon_base64:
         description: 'Icon Base64'
         required: true
 
