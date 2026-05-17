@@ -26,6 +26,14 @@ jobs:
     steps:
 
       # =========================
+      # NODE.JS
+      # =========================
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+      node-version: "24"
+
+      # =========================
       # DOWNLOAD ZIP
       # =========================
       - name: Download ZIP project
