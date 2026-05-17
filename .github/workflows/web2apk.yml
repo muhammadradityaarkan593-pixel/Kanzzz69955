@@ -41,10 +41,12 @@ jobs:
           cd myapp
           flutter pub add webview_flutter
           flutter pub add flutter_launcher_icons
-          # Mendaftarkan folder assets di pubspec.yaml agar logo bisa tampil di Splash Screen
-          sed -i '/flutter:/a \  assets:\n    - assets/icon/' pubspec.yaml
+          
+          # Menambahkan konfigurasi assets ke baris paling bawah untuk menghindari error indentasi YAML
+          echo "  assets:" >> pubspec.yaml
+          echo "    - assets/icon/" >> pubspec.yaml
 
-      - name: Write main.dart (With Splash Screen & Smooth Progress)
+      - name: Write main.dart (Splash Screen & Smooth Progress)
         run: |
           WEB_URL="${{ github.event.inputs.web_url }}"
           APP_NAME="${{ github.event.inputs.app_name }}"
@@ -76,7 +78,7 @@ jobs:
             }
           }
 
-          // --- ANIMASI SPLASH SCREEN ---
+          // Animasi Splash Screen selama 3 detik sebelum masuk ke WebView
           class SplashScreen extends StatefulWidget {
             const SplashScreen({super.key});
             @override
@@ -87,7 +89,6 @@ jobs:
             @override
             void initState() {
               super.initState();
-              // Pindah ke WebView setelah 3 detik
               Timer(const Duration(seconds: 3), () {
                 Navigator.pushReplacement(
                   context,
@@ -110,6 +111,7 @@ jobs:
                           'assets/icon/icon.png',
                           width: 120,
                           height: 120,
+                          errorBuilder: (context, error, stackTrace) => const Icon(Icons.android, size: 120),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -133,7 +135,6 @@ jobs:
             }
           }
 
-          // --- HALAMAN UTAMA WEBVIEW ---
           class WebViewPage extends StatefulWidget {
             const WebViewPage({super.key});
             @override
@@ -151,7 +152,7 @@ jobs:
                 ..setJavaScriptMode(JavaScriptMode.unrestricted)
                 ..setBackgroundColor(Colors.white)
                 ..setNavigationDelegate(NavigationDelegate(
-                  onProgress: (progress) => setState(() => _progress = progress),
+                  onProgress: (progress) => setState(() => _progress = progress), // Indikator progress linear
                   onPageFinished: (_) => setState(() => _progress = 0),
                 ))
                 ..loadRequest(Uri.parse('$WEB_URL'));
@@ -226,6 +227,7 @@ jobs:
             "${{ github.event.inputs.icon_url }}" \
             -o myapp/assets/icon/icon_raw
 
+          # Mengubah gambar menjadi format PNG 1024x1024 yang valid
           convert myapp/assets/icon/icon_raw \
             -background transparent \
             -gravity center \
