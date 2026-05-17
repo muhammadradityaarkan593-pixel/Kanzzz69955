@@ -156,22 +156,34 @@ jobs:
       - name: Download, Validate and Sanitize Icon
         run: |
           mkdir -p myapp/assets/icon
-          sudo apt-get update && sudo apt-get install -y imagemagick
+          sudo apt-get install -y imagemagick
 
-          # Download dari link API internal GitHub menggunakan GITHUB_TOKEN bawaan runner
-          curl -L -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-               -H "Accept: application/octet-stream" \
-               "${{ github.event.inputs.icon_url }}" \
-               -o myapp/assets/icon/downloaded_raw
+          # Download dengan auth token
+          curl -L \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/octet-stream" \
+            "${{ github.event.inputs.icon_url }}" \
+            -o myapp/assets/icon/icon_raw
 
-          # Validasi paksa, ganti ke PNG jika aman, cegah jika file berisi teks HTML
-          if ! convert myapp/assets/icon/downloaded_raw -resize 512x512 myapp/assets/icon/icon.png; then
-            echo "========================================= [ERROR] ========================================="
-            echo "FILE YANG DI-DOWNLOAD BUKAN BINARY GAMBAR VALID!"
-            echo "Isi file terdeteksi sebagai teks atau halaman HTML konfirmasi GitHub."
-            echo "==========================================================================================="
+          # Validasi file
+          FILETYPE=$(file --mime-type -b myapp/assets/icon/icon_raw)
+          echo "File type: $FILETYPE"
+
+          if echo "$FILETYPE" | grep -qE "text|html"; then
+            echo "========= ERROR ========="
+            cat myapp/assets/icon/icon_raw
             exit 1
           fi
+
+          # Convert ke PNG kotak sempurna
+          convert myapp/assets/icon/icon_raw \
+            -background transparent \
+            -gravity center \
+            -resize 1024x1024 \
+            -extent 1024x1024 \
+            myapp/assets/icon/icon.png
+
+          file myapp/assets/icon/icon.png
 
       - name: Write launcher icons config
         run: |
